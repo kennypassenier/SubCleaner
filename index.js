@@ -3,7 +3,12 @@ const urlRegex = require("url-regex");
 const cliProgress = require('cli-progress');
 const fs = require("fs").promises;
 
+// We use the processedSymbol as a tag to see if we have
+// already previously parsed this file
+// saving us valuable time and CPU
+const processedSymbol = "ĸ" // UTF-8 c4b8
 const parser = new srtParser2();
+// const directories = ["E:/Projects/SubCleaner/test"];
 const directories = ["D:/Series", "D:/Films"];
 
 async function main(){
@@ -62,7 +67,17 @@ async function removeURL(filePath){
       const lines = parser.fromSrt(data);
       let newLines = [];
       // Iterate over json
-      for(let line of lines){
+      lines.forEach((line, index) => {
+        // Check if this file has already been processed
+        if(index === 0){
+          if(line.text.startsWith(processedSymbol)){
+            // Break out of the loop 
+            return 0;
+          }
+          else{
+            line.text = `${processedSymbol} ${line.text}`;
+          }
+        }
         // Check if .text contains an URL
         if(urlRegex({strict:false}).test(line.text)){
           // Replace the text with a single space
@@ -74,13 +89,16 @@ async function removeURL(filePath){
             endTime: line.endTime,
             text: " ",
           }
+          if(index === 0){
+            newObject.text = processedSymbol;  
+          }
           newLines.push(newObject);  
           amountOfUrls++;
         }
         else{
           newLines.push(line);
         }
-      }       
+      });     
       try {
         // Every line with an URL is now replaced
         // We should parse the data back into srt format
