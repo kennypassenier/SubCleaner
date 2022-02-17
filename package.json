@@ -1,0 +1,15 @@
+{
+  "name": "subcleaner",
+  "version": "1.0.0",
+  "description": "Clears out any line containing an URL",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Kenny Passenier",
+  "license": "MIT",
+  "dependencies": {
+    "srt-parser-2": "^1.1.7",
+    "url-regex": "^5.0.0"
+  }
+}
