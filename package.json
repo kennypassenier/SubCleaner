@@ -9,6 +9,7 @@
   "author": "Kenny Passenier",
   "license": "MIT",
   "dependencies": {
+    "cli-progress": "^3.10.0",
     "srt-parser-2": "^1.1.7",
     "url-regex": "^5.0.0"
   }

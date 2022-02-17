@@ -1,11 +1,13 @@
 const {default: srtParser2 } = require("srt-parser-2");
 const urlRegex = require("url-regex");
+const cliProgress = require('cli-progress');
 const fs = require("fs").promises;
 
 const parser = new srtParser2();
-const directories = ["D:/Series", "D:/Films", "E:/Series 2", "E:/Films 2"];
+const directories = ["D:/Series", "D:/Films"];
 
 async function main(){
+  const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
   let amountOfUrls = 0;
   let srtFiles = [];
   // We have 2 folders which we need to scan
@@ -18,9 +20,14 @@ async function main(){
   // Now that we have all the relevant files we want to examine
   // We can loop through every one of them and see if there are
   // lines containing a URL
+
+  progressBar.start(srtFiles.length, 0);
   for(let filePath of srtFiles){
     amountOfUrls += await removeURL(filePath);
+    progressBar.increment(1);
+    progressBar.updateETA();
   }
+  progressBar.stop();
   console.log("Finished");
   console.log(`removed ${amountOfUrls} URL's`);
 
