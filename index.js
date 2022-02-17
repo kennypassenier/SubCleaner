@@ -54,36 +54,56 @@ async function findSrtFiles(dirName){
 
 async function removeURL(filePath){
   let amountOfUrls = 0;
-  // Load text file into array
-  const data = await fs.readFile(filePath, "utf-8");
-  // Parse text file into json
-  const lines = parser.fromSrt(data);
-  let newLines = [];
-  // Iterate over json
-  for(let line of lines){
-    // Check if .text contains an URL
-    if(urlRegex({strict:false}).test(line.text)){
-      // Replace the text with a single space
-      // Avoids errors in some video players and
-      // we don't have to re-enumerate every line
-      const newObject = {
-        id: line.id,
-        startTime: line.startTime,
-        endTime: line.endTime,
-        text: " ",
+  try {
+    // Load text file into array
+    const data = await fs.readFile(filePath, "utf-8");
+    try {
+      // Parse text file into json
+      const lines = parser.fromSrt(data);
+      let newLines = [];
+      // Iterate over json
+      for(let line of lines){
+        // Check if .text contains an URL
+        if(urlRegex({strict:false}).test(line.text)){
+          // Replace the text with a single space
+          // Avoids errors in some video players and
+          // we don't have to re-enumerate every line
+          const newObject = {
+            id: line.id,
+            startTime: line.startTime,
+            endTime: line.endTime,
+            text: " ",
+          }
+          newLines.push(newObject);  
+          amountOfUrls++;
+        }
+        else{
+          newLines.push(line);
+        }
+      }       
+      try {
+        // Every line with an URL is now replaced
+        // We should parse the data back into srt format
+        // And add it to the file
+        const newData = await parser.toSrt(newLines);        
+        try {
+          await fs.writeFile(filePath, newData);          
+        } catch (error) {
+          console.error("Error while trying to write to file");
+          console.error(filePath);
+        }        
+      } catch (error) {
+        console.error("Error trying to parse data into SRT format");
+        console.error(filePath);
       }
-      newLines.push(newObject);  
-      amountOfUrls++;
+    } catch (error) {
+      console.error("Problem parsing the SRT data");
+      console.error(filePath);
     }
-    else{
-      newLines.push(line);
-    }
-  } 
-  // Every line with an URL is now replaced
-  // We should parse the data back into srt format
-  // And add it to the file
-  const newData = await parser.toSrt(newLines);
-  await fs.writeFile(filePath, newData);
+  } catch (error) {
+    console.error("There was a problem reading this file");
+    console.error(filePath);
+  }
   return amountOfUrls;
 }
 
