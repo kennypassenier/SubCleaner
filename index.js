@@ -1,43 +1,93 @@
+require("dotenv").config();
 const {default: srtParser2 } = require("srt-parser-2");
 const urlRegex = require("url-regex");
 const cliProgress = require('cli-progress');
+const { Model, DataTypes, Sequelize } = require("sequelize");
 const fs = require("fs").promises;
+const sequelize = new Sequelize(process.env.DBNAME, process.env.DBUSER, process.env.DBPASSWORD, {
+  host: process.env.DBHOST,
+  dialect: "mysql",
+  logging: false,
+});
 
-// We use the processedSymbol as a tag to see if we have
-// already previously parsed this file
-// saving us valuable time and CPU
-const processedSymbol = "ĸ" // UTF-8 c4b8
+class SubFile extends Model{}
+
+SubFile.init({
+  // Model attributes are defined here
+  path: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+}, {
+  // Other model options go here
+  sequelize, // We need to pass the connection instance
+  modelName: 'SubFile' // We need to choose the model name
+});
 const parser = new srtParser2();
 // const directories = ["E:/Projects/SubCleaner/test"];
 const directories = ["D:/Series", "D:/Films"];
 
 async function main(){
-  const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
-  let amountOfUrls = 0;
-  let srtFiles = [];
-  // We have 2 folders which we need to scan
-  // They are both in the directories constant
-  // We need to iterate over both of them and seek every .srt file within
-  for(let directory of directories){
-    newFiles = await findSrtFiles(directory);  
-    srtFiles = [...srtFiles,  ...newFiles];  
-  }
-  // Now that we have all the relevant files we want to examine
-  // We can loop through every one of them and see if there are
-  // lines containing a URL
 
-  progressBar.start(srtFiles.length, 0);
-  for(let filePath of srtFiles){
-    amountOfUrls += await removeURL(filePath);
-    progressBar.increment(1);
-    progressBar.updateETA();
+
+  try {
+    await sequelize.authenticate();
+    console.log('Connection has been established successfully.');
+    await SubFile.sync(); // Creates the DB Table if it doesn't exist
+    
+    const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
+    let amountOfUrls = 0;
+    let srtFiles = [];
+    // We have 2 folders which we need to scan
+    // They are both in the directories constant
+    // We need to iterate over both of them and seek every .srt file within
+    for(let directory of directories){
+      newFiles = await findSrtFiles(directory);  
+      srtFiles = [...srtFiles,  ...newFiles];  
+    }
+    // We now compare every filename to the ones existing in our database
+    // Load all files from our DB
+    srtFiles = await filterEntries(srtFiles);
+    // Now that we have all the relevant files we want to examine
+    // We can loop through every one of them and see if there are
+    // lines containing a URL
+  
+    progressBar.start(srtFiles.length, 0);
+    for(let filePath of srtFiles){
+      amountOfUrls += await removeURL(filePath);
+      progressBar.increment(1);
+    }
+    progressBar.stop();
+    console.log("Finished");
+    console.log(`removed ${amountOfUrls} URL's`);
+    console.log('Closing connection to database');
+    await sequelize.close()
+  } catch (error) {
+    console.error('Unable to connect to the database:', error);
   }
-  progressBar.stop();
-  console.log("Finished");
-  console.log(`removed ${amountOfUrls} URL's`);
+
+
+
+
 
 }
 
+// Returns an array with filenames that are NOT in our DB already
+async function filterEntries(files){
+  const dbFiles = await SubFile.findAll();
+  for(let dbFile of dbFiles){
+    // If dbFile is found in files, it should get removed
+    // from the array
+    const itemIndex = files.indexOf(dbFile.dataValues.path);
+    if( itemIndex !== -1){
+      files.splice(itemIndex, 1);
+    }
+  }
+  return files;
+  
+}
+
+// Returns array with all filenames
 async function findSrtFiles(dirName){
   // This function recursively scans directories and adds every srt file
   // to an array, which it returns at the end
@@ -56,7 +106,7 @@ async function findSrtFiles(dirName){
   }
   return files;
 }
-
+// Returns number of files that were edited
 async function removeURL(filePath){
   let amountOfUrls = 0;
   try {
@@ -68,16 +118,6 @@ async function removeURL(filePath){
       let newLines = [];
       // Iterate over json
       lines.forEach((line, index) => {
-        // Check if this file has already been processed
-        if(index === 0){
-          if(line.text.startsWith(processedSymbol)){
-            // Break out of the loop 
-            return 0;
-          }
-          else{
-            line.text = `${processedSymbol} ${line.text}`;
-          }
-        }
         // Check if .text contains an URL
         if(urlRegex({strict:false}).test(line.text)){
           // Replace the text with a single space
@@ -88,9 +128,6 @@ async function removeURL(filePath){
             startTime: line.startTime,
             endTime: line.endTime,
             text: " ",
-          }
-          if(index === 0){
-            newObject.text = processedSymbol;  
           }
           newLines.push(newObject);  
           amountOfUrls++;
@@ -105,7 +142,19 @@ async function removeURL(filePath){
         // And add it to the file
         const newData = await parser.toSrt(newLines);        
         try {
-          await fs.writeFile(filePath, newData);          
+          await fs.writeFile(filePath, newData);
+          // The file has been rewritten so we can add the path to our DB
+          // to prevent having to do this operation again
+          try {
+            const newDBEntry = await SubFile.create({
+              path: filePath,
+            });
+            // console.log(newDBEntry.id);
+            // console.log(newDBEntry.path);
+          } catch (error) {
+            console.error("Error while trying to put filepath into DB");
+            console.error(filePath);
+          }       
         } catch (error) {
           console.error("Error while trying to write to file");
           console.error(filePath);
