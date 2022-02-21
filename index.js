@@ -6,9 +6,16 @@ const { Model, DataTypes, Sequelize } = require("sequelize");
 const fs = require("fs").promises;
 const sequelize = new Sequelize(process.env.DBNAME, process.env.DBUSER, process.env.DBPASSWORD, {
   host: process.env.DBHOST,
-  dialect: "mysql",
+  dialect: "sqlite",
   logging: false,
+  storage: "database.sqlite"
 });
+// Switched to SQLITE, no longer needs mysql data
+// const sequelize = new Sequelize(process.env.DBNAME, process.env.DBUSER, process.env.DBPASSWORD, {
+//   host: process.env.DBHOST,
+//   dialect: "mysql",
+//   logging: false,
+// });
 
 class SubFile extends Model{}
 
@@ -24,7 +31,6 @@ SubFile.init({
   modelName: 'SubFile' // We need to choose the model name
 });
 const parser = new srtParser2();
-// const directories = ["E:/Projects/SubCleaner/test"];
 const directories = ["D:/Series", "D:/Films"];
 
 async function main(){
