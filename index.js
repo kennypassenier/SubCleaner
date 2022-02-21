@@ -1,21 +1,13 @@
-require("dotenv").config();
 const {default: srtParser2 } = require("srt-parser-2");
 const urlRegex = require("url-regex");
 const cliProgress = require('cli-progress');
 const { Model, DataTypes, Sequelize } = require("sequelize");
 const fs = require("fs").promises;
-const sequelize = new Sequelize(process.env.DBNAME, process.env.DBUSER, process.env.DBPASSWORD, {
-  host: process.env.DBHOST,
+const sequelize = new Sequelize({
   dialect: "sqlite",
   logging: false,
   storage: "database.sqlite"
 });
-// Switched to SQLITE, no longer needs mysql data
-// const sequelize = new Sequelize(process.env.DBNAME, process.env.DBUSER, process.env.DBPASSWORD, {
-//   host: process.env.DBHOST,
-//   dialect: "mysql",
-//   logging: false,
-// });
 
 class SubFile extends Model{}
 
