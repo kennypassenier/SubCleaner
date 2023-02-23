@@ -10,7 +10,7 @@
   "license": "MIT",
   "dependencies": {
     "cli-progress": "^3.10.0",
-    "sequelize": "^6.16.2",
+    "sequelize": "^6.28.2",
     "sequelize-cli": "^6.4.1",
     "sqlite3": "^5.0.2",
     "srt-parser-2": "^1.1.7",
